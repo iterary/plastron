@@ -1,4 +1,20 @@
-## Getting Started
+## Plastron
+
+> **plas·tron**  
+/ˈplastrən/  
+the nearly flat part of the shell structure of a turtle
+
+### Generate schedules from the command line
+
+```bash
+py -m plastron.schedule_generator INST335 INST314 INST311 INST327 -n 3
+```
+
+Arguments
+- `Course IDs`: List of course IDs (e.g. INST335 INST314 INST311 INST327)
+- `-n`: Number of schedules to generate (default: 1)
+
+## Development
 
 ### Get Poetry as a package manager
 
