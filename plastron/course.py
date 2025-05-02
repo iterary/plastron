@@ -11,7 +11,8 @@ import json
 import requests
 
 from datetime import datetime
-from plastron.section import Section, expand_days
+from plastron.section import Section
+from plastron.scraper import scrape_course
 from typing import Any, Callable
 
 # TODO: Add more filters and filter functions
@@ -23,7 +24,7 @@ FILTER_FUNCTIONS = {
         "FC" not in section["section_id"] if active else True
     ),
     "open_seats": lambda active: lambda section: (
-        section["open_seats"] != 0 if active else True
+        section["open_seats"] != "0" if active else True
     ),
     "earliest_start": lambda time: lambda section: all(
         not meeting["start_time"]
@@ -152,13 +153,23 @@ class Course:
     # TODO: Scrape sections instead of using umd.io
     # This is because umd.io seems to have an internal queue/throttling that blocks us from requesting multiple courses at once
     # Even though we're doing it in parallel :(
-    async def scrape_sections(self):
+    async def scrape_sections(self, session: aiohttp.ClientSession):
         """Hydrate the sections of the course by scraping Testudo SOC website.
+
+        Args:
+            session (aiohttp.ClientSession): The async session to use.
 
         Raises:
             Exception: If scraping fails.
         """
-        pass
+        try:
+            sections = await scrape_course(self.course_id, session)
+            self.sections = self.filter_sections(sections)
+            self.sections.reverse()
+            self.hydrated = True
+        except Exception as e:
+            print(f"Error scraping sections for course {self.course_id}: {e}")
+            raise e
 
     # TODO: Cache responses from scraping and use them if available
     # Upstash + Redis is a good choice here
