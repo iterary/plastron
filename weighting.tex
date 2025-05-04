@@ -1,0 +1,38 @@
+\documentclass{article}
+\usepackage{amsmath}
+\begin{document}
+
+\section*{Schedule Cost Formula}
+
+\textbf{TotalCost:}
+\[
+\text{TotalCost} = \sum_{i=1}^{n} \left( \text{AdjustedGap}(g_i)^{c} \right) + D \cdot P_d
+\]
+
+\textbf{Where:}
+\begin{align*}
+g_i & = \text{Gap (in minutes) between adjacent classes on the same day} \\
+c & = \text{Gap exponent (e.g., 0.75)} \\
+D & = \text{Number of days with at least one meeting} \\
+P_d & = \text{Penalty per meeting day (e.g., 15)}
+\end{align*}
+
+\vspace{1em}
+\textbf{Adjusted Gap:}
+\[
+\text{AdjustedGap}(g) = g + \text{Penalty}(g)
+\]
+
+\textbf{Penalty Function:}
+\[
+\text{Penalty}(g) = P_s \cdot \exp\left( -\frac{(g - \mu)^2}{2\sigma^2} \right)
+\]
+
+\textbf{Where:}
+\begin{align*}
+P_s & = \text{Penalty scale (e.g., 30)} \\
+\mu & = \text{Penalty center (e.g., 50 minutes)} \\
+\sigma & = \text{Penalty spread (e.g., 15 minutes)}
+\end{align*}
+
+\end{document}

@@ -6,83 +6,105 @@ Attributes:
 """
 
 import heapq
+import math
 
-from bisect import bisect_right
 from collections import defaultdict
 from itertools import count
 
 from plastron.course import Course, Section
 
+DAY_WEIGHT = 15
 
-# TODO: This is a somewhat naive implementation
-# We could adjust weighting to account for minimizing # of days with meetings
-# As well as potentially not count ONLINE classes in gap calculation
-def calculate_weight(path: list[Section], new_section: Section) -> float:
-    """Estimate the gap cost of inserting new_section into an existing path.
-    Compares only closest meetings in time per overlapping day.
+
+def adjusted_gap(
+    gap: float,
+    penalty_multiplier: float = 30,
+    penalty_midpoint: float = 50,
+    penalty_range: float = 15,
+) -> float:
+    """
+    Adjusts the gap cost to penalize less usable gaps (e.g. 45 minute gap might be too short to do anything between classes, but still a long time to wait)
+
+    Args:
+        gap (float): The gap in minutes.
+        penalty_multiplier (float, optional): The multiplier for the penalty. Defaults to 30.
+        penalty_midpoint (float, optional): The midpoint of the penalty, where the penalty is at its maximum. Defaults to 50.
+        penalty_range (float, optional): The range of the penalty. Defaults to 15.
+
+    Returns:
+        float: The adjusted gap cost.
+    """
+    cost = gap
+
+    penalty = penalty_multiplier * math.exp(
+        -((gap - penalty_midpoint) ** 2) / (2 * penalty_range**2)
+    )
+
+    return cost + penalty
+
+
+# Does an insert, sort, and then a full scan
+# Slightly slower than binary search insertion, but more readable
+def calculate_weight(
+    path: list[Section], new_section: Section, gap_exponent: float = 0.75
+) -> tuple[float, int]:
+    """Estimate the total gappage after inserting new_section into an existing path.
 
     Args:
         path (list[Section]): List of sections already in the schedule.
         new_section (Section): Section to be added.
 
     Returns:
-        float: Estimated added cost in minutes, or inf if overlap.
+        tuple[float, int]: Total gap in minutes, and number of days with meetings.
     """
-    # Build a per-day timeline of meetings from the existing path
     day_meetings = defaultdict(list)
 
     for section in path:
         for meeting in section.meetings:
             day_meetings[meeting.days].append((meeting.start_time, meeting.end_time))
 
-    # Sort the timelines so we can binary search by start time
-    for day in day_meetings:
-        day_meetings[day].sort()  # sorted by start_time
-
-    total_gap = 0
-
     for meeting in new_section.meetings:
-        day = meeting.days
-        new_start = meeting.start_time
-        new_end = meeting.end_time
+        day_meetings[meeting.days].append((meeting.start_time, meeting.end_time))
 
-        if day not in day_meetings:
-            continue  # No overlap on this day, so no gap penalty needed
+    cost = 0
+    total_gap = 0
+    num_days_with_meetings = 0
 
-        day_schedule = day_meetings[day]
+    for day in day_meetings:
+        day_meetings[day].sort()
 
-        # Binary search to find where new_start would be inserted
-        idx = bisect_right(day_schedule, (new_start, new_end))
+        if len(day_meetings[day]) > 0:
+            num_days_with_meetings += 1
 
-        # Check previous and next neighbor only
-        neighbors = []
-        if idx > 0:
-            neighbors.append(day_schedule[idx - 1])
-        if idx < len(day_schedule):
-            neighbors.append(day_schedule[idx])
+        for i in range(len(day_meetings[day]) - 1):
+            new_gap = 0
+            start, end = day_meetings[day][i]
+            next_start, next_end = day_meetings[day][i + 1]
 
-        for exist_start, exist_end in neighbors:
-            # Check for overlap
-            if (exist_start <= new_start < exist_end) or (
-                new_start <= exist_start < new_end
-            ):
-                return float("inf")
+            if end > next_start:
+                return (float("inf"), 1)
 
-            # Compute positive gap
-            if new_end <= exist_start:
-                gap = (exist_start - new_end).total_seconds() / 60
-            elif exist_end <= new_start:
-                gap = (new_start - exist_end).total_seconds() / 60
-            else:
-                gap = 0
+            new_gap = (next_start - end).total_seconds() / 60
 
-            if gap > 0:
-                total_gap += gap
+            if new_gap > 0:
+                total_gap += new_gap
+                # Exponentiation is used to make the cost function less sensitive to large gaps
+                cost += adjusted_gap(new_gap) ** gap_exponent
 
-    return total_gap
+    cost += num_days_with_meetings * DAY_WEIGHT
+
+    return (
+        cost,
+        {
+            "total_gap": total_gap,
+            "num_days_with_meetings": num_days_with_meetings,
+        },
+    )
 
 
-def optimize_schedule(courses: list[Course], top: int = 1) -> list:
+def optimize_schedule(
+    courses: list[Course], top: int = 1, gap_exponent: float = 0.75
+) -> list:
     """Uniform cost search for the top k optimal schedules.
 
     Args:
@@ -92,43 +114,68 @@ def optimize_schedule(courses: list[Course], top: int = 1) -> list:
     Returns:
         list[dict]: List of top k optimal schedules.
     """
+
+    # Tiebreakers for heapq
     counter = count()
-    start_state = (0, next(counter), [], 0)  # (cost, counter, path, course_index)
+    result_counter = count()
+
+    start_state = (
+        0,
+        next(counter),
+        [],
+        0,
+        {},
+    )  # (cost, counter, path, course_index, stats)
     queue = [start_state]
 
     results = []
     visited = set()
+    best_complete_cost = float("inf")
 
-    # While we still have stuff to explore AND we haven't found the top k results
-    while queue and len(results) < top:
+    if len(courses) == 0:
+        return []
+
+    # While we still have stuff to explore
+    while queue:
         # Python's heapq implementation is pretty helpful, we can mooch off of it
-        cost, _, path, course_idx = heapq.heappop(queue)
+        cost, _, path, course_idx, stats = heapq.heappop(queue)
 
-        # If we've reached the end (selected a section for each course)
+        # If we've completed the current path
         if course_idx == len(courses):
-            results.append(
-                {
-                    "total_gap_minutes": cost,
-                    "sections": path,
-                }
-            )
+            best_complete_cost = min(best_complete_cost, cost)
+
+            result = {
+                "cost": cost,
+                "total_gap_minutes": stats["total_gap"],
+                "num_days_with_meetings": stats["num_days_with_meetings"],
+                "sections": path,
+            }
+
+            heapq.heappush(results, (cost, next(result_counter), result))
+
             continue
 
         # Generate next states by choosing sections from the next course
         for section in courses[course_idx].sections:
             new_path = path + [section]
 
-            gap = calculate_weight(path, section)
+            cost, stats = calculate_weight(path, section, gap_exponent)
 
-            if gap == float("inf"):
-                continue  # Skip invalid combinations
+            if cost == float("inf") or cost > best_complete_cost + 60:
+                continue  # Prune conflicts or paths that are worse than the best complete schedule
 
-            new_cost = cost + gap
-            new_state = (new_cost, next(counter), new_path, course_idx + 1)
+            new_state = (
+                cost,
+                next(counter),
+                new_path,
+                course_idx + 1,
+                stats,
+            )
             state_id = (course_idx + 1, tuple(s.section_id for s in new_path))
 
             if state_id not in visited:
                 visited.add(state_id)
                 heapq.heappush(queue, new_state)
 
-    return results
+    # print(len(results))
+    return [result for _, _, result in heapq.nsmallest(top, results)]
