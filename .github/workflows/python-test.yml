@@ -1,0 +1,27 @@
+name: pytest
+
+on:
+  push:
+    branches: [ main, badges ]
+  pull_request:
+    branches: [ main, badges ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v3
+        with:
+          python-version: '3.13'
+      
+      - name: Install Poetry
+        uses: abatilo/actions-poetry@v3
+
+      - name: Install dependencies
+        run: poetry install
+
+      - name: Run tests
+        run: poetry run pytest
+
+

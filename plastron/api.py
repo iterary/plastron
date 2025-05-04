@@ -1,5 +1,4 @@
 import io
-import json
 import platform
 import psutil
 import re
@@ -31,7 +30,7 @@ class ScheduleFilters(BaseModel):
 
     no_esg: Optional[bool] = True
     no_fc: Optional[bool] = True
-    open_seats: Optional[bool] = True
+    open_seats: Optional[bool] = False
     earliest_start: Optional[str] = "8:00am"
     latest_end: Optional[str] = "5:00pm"
 
@@ -43,8 +42,10 @@ class ScheduleRequest(BaseModel):
         BaseModel (pydantic.BaseModel): The base model for the request.
     """
 
-    courses: List[str] = Field(..., example=["ANSC101", "ANSC103"])
-    top: Optional[int] = Field(1, example=1)
+    courses: List[str] = Field(
+        ..., json_schema_extra={"example": ["ANSC101", "ANSC103"]}
+    )
+    top: Optional[int] = Field(1, json_schema_extra={"example": 1})
     filters: Optional[ScheduleFilters] = Field(default_factory=ScheduleFilters)
 
 
@@ -64,7 +65,7 @@ async def visualize_schedules(
     Returns:
         str: The visualized schedules.
     """
-    schedule_generator = ScheduleGenerator(data.courses, data.filters.dict())
+    schedule_generator = ScheduleGenerator(data.courses, data.filters.model_dump())
 
     await schedule_generator.hydrate_courses_async()
     schedule_generator.generate_schedules(data.top)
@@ -96,7 +97,7 @@ async def generate_schedules(data: ScheduleRequest):
     Returns:
         list: A list of schedules.
     """
-    schedule_generator = ScheduleGenerator(data.courses, data.filters.dict())
+    schedule_generator = ScheduleGenerator(data.courses, data.filters.model_dump())
 
     await schedule_generator.hydrate_courses_async()
     return schedule_generator.generate_schedules(data.top)

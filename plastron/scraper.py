@@ -37,7 +37,7 @@ def get_closest_term_id(date: datetime = datetime.now()) -> str:
     if is_spring(date):
         return f"{current_year}08"
     else:
-        return f"{current_year}01"
+        return f"{current_year + 1}01"
 
 
 async def scrape_course(course_id: str, session: aiohttp.ClientSession):

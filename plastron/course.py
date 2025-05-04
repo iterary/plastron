@@ -8,7 +8,8 @@ Attributes:
 
 import aiohttp
 import json
-import requests
+
+# import requests
 
 from datetime import datetime
 from plastron.section import Section
@@ -75,7 +76,6 @@ class Course:
         course_id (str): The course ID.
         hydrated (bool): Whether the course has been hydrated (i.e. sections have been fetched).
         sections (list[Section]): The sections of the course.
-        url (str): The request URL of the course.
         filters (dict[str, Any]): The filters that sections must pass to be included.
     """
 
@@ -86,75 +86,72 @@ class Course:
             course_id (str): The course ID.
             filters (dict[str, Any]): The filters that sections must pass to be included.
         """
-        self.course_id = course_id
+        self.course_id = course_id.upper()
         self.hydrated = False
         self.sections = []
-        self.url = f"https://api.umd.io/v1/courses/{self.course_id}/sections"
+        # self.url = f"https://api.umd.io/v1/courses/{self.course_id}/sections"
 
         # Merge default with provided
         self.filters = {**DEFAULT_FILTERS, **filters}
 
-    def hydrate_sections(self) -> list[Section]:
-        """Hydrate the sections of the course synchronously. Sets hydrated to True if successful.
+    # def hydrate_sections(self) -> list[Section]:
+    #     """Hydrate the sections of the course synchronously. Sets hydrated to True if successful.
 
-        Raises:
-            Exception: If hydration fails.
+    #     Raises:
+    #         Exception: If hydration fails.
 
-        Returns:
-            list[Section]: The sections of the course.
-        """
-        try:
-            response = requests.get(self.url)
-            data = response.json()
+    #     Returns:
+    #         list[Section]: The sections of the course.
+    #     """
+    #     try:
+    #         response = requests.get(self.url)
+    #         data = response.json()
 
-            if not isinstance(data, list) and "error_code" in data:
-                raise Exception(data["message"])
+    #         if not isinstance(data, list) and "error_code" in data:
+    #             raise Exception(data["message"])
 
-            self.sections = self.filter_sections(data)
-            self.hydrated = True
-        except Exception as e:
-            print(f"Error hydrating sections for course {self.course_id}: {e}")
-            raise e
-        finally:
-            return self.sections
+    #         self.sections = self.filter_sections(data)
+    #         self.hydrated = True
+    #     except Exception as e:
+    #         print(f"Error hydrating sections for course {self.course_id}: {e}")
+    #         raise e
+    #     finally:
+    #         return self.sections
 
-    async def hydrate_sections_async(
-        self, session: aiohttp.ClientSession
-    ) -> list[Section]:
-        """Hydrate the sections of the course asynchronously. Sets hydrated to True if successful.
+    # async def hydrate_sections_async(
+    #     self, session: aiohttp.ClientSession
+    # ) -> list[Section]:
+    #     """Hydrate the sections of the course asynchronously. Sets hydrated to True if successful.
 
-        Args:
-            session (aiohttp.ClientSession): The async session to use.
+    #     Args:
+    #         session (aiohttp.ClientSession): The async session to use.
 
-        Raises:
-            Exception: If hydration fails.
+    #     Raises:
+    #         Exception: If hydration fails.
 
-        Returns:
-            list[Section]: The sections of the course.
-        """
-        try:
-            # print(f"Hydrating sections for course {self.course_id} at {datetime.now()}")
-            async with session.get(self.url) as response:
-                data = await response.json()
+    #     Returns:
+    #         list[Section]: The sections of the course.
+    #     """
+    #     try:
+    #         # print(f"Hydrating sections for course {self.course_id} at {datetime.now()}")
+    #         async with session.get(self.url) as response:
+    #             data = await response.json()
 
-                if not isinstance(data, list) and "error_code" in data:
-                    raise Exception(data["message"])
+    #             if not isinstance(data, list) and "error_code" in data:
+    #                 raise Exception(data["message"])
 
-                self.sections = self.filter_sections(data)
-                self.sections.reverse()
-                self.hydrated = True
-        except Exception as e:
-            print(f"Error hydrating sections for course {self.course_id}: {e}")
-            raise e
+    #             self.sections = self.filter_sections(data)
+    #             self.sections.reverse()
+    #             self.hydrated = True
+    #     except Exception as e:
+    #         print(f"Error hydrating sections for course {self.course_id}: {e}")
+    #         raise e
 
-        # print(f"Hydrated sections for course {self.course_id} at {datetime.now()}")
-        return self.sections
+    #     # print(f"Hydrated sections for course {self.course_id} at {datetime.now()}")
+    #     return self.sections
 
-    # TODO: Scrape sections instead of using umd.io
-    # This is because umd.io seems to have an internal queue/throttling that blocks us from requesting multiple courses at once
-    # Even though we're doing it in parallel :(
     async def scrape_sections(self, session: aiohttp.ClientSession):
-        """Hydrate the sections of the course by scraping Testudo SOC website.
+        """Hydrate the sections of the course by scraping Testudo SOC website. Sets hydrated to True if successful.
 
         Args:
             session (aiohttp.ClientSession): The async session to use.

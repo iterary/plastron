@@ -1,6 +1,7 @@
 """A module for the A* algorithm (but not really bc no heuristic).
 
 Attributes:
+    adjusted_gap (function): a function for adjusting the gap cost based on a bell curve.
     calculate_weight (function): a function for calculating the weight of a schedule.
     optimize_schedule (function): a function for optimizing a schedule.
 """
@@ -10,6 +11,7 @@ import math
 
 from collections import defaultdict
 from itertools import count
+from typing import Any
 
 from plastron.course import Course, Section
 
@@ -47,15 +49,16 @@ def adjusted_gap(
 # Slightly slower than binary search insertion, but more readable
 def calculate_weight(
     path: list[Section], new_section: Section, gap_exponent: float = 0.75
-) -> tuple[float, int]:
-    """Estimate the total gappage after inserting new_section into an existing path.
+) -> tuple[float, dict]:
+    """Estimate the total weight after inserting new_section into an existing path.
 
     Args:
         path (list[Section]): List of sections already in the schedule.
         new_section (Section): Section to be added.
+        gap_exponent (float, optional): The exponent for the gap cost. Defaults to 0.75.
 
     Returns:
-        tuple[float, int]: Total gap in minutes, and number of days with meetings.
+        tuple[float, dict]: Total weight, and stats.
     """
     day_meetings = defaultdict(list)
 
@@ -88,7 +91,7 @@ def calculate_weight(
 
             if new_gap > 0:
                 total_gap += new_gap
-                # Exponentiation is used to make the cost function less sensitive to large gaps
+                # Exponentiation is used to make the cost function more/less sensitive to large gaps
                 cost += adjusted_gap(new_gap) ** gap_exponent
 
     cost += num_days_with_meetings * DAY_WEIGHT
