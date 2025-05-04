@@ -21,6 +21,7 @@ from datetime import datetime, timedelta
 from operator import itemgetter
 from plastron.astar import optimize_schedule
 from plastron.course import Course, Section
+from typing import Any
 
 DAYS = ["M", "Tu", "W", "Th", "F"]
 COLORS = [
@@ -131,16 +132,14 @@ class ScheduleGenerator:
         time_start (datetime): The time the generator started (for performance tracking).
     """
 
-    def __init__(
-        self,
-        required_courses: list[str],
-    ):
+    def __init__(self, required_courses: list[str] = [], filters: dict[str, Any] = {}):
         """Initialize a ScheduleGenerator object.
 
         Args:
-            required_courses (list[str]): List of required course IDs.
+            required_courses (list[str], optional): List of required course IDs. Defaults to an empty list.
+            filters (dict[str, Any], optional): Dictionary of filters to apply to the courses. Defaults to an empty dictionary.
         """
-        self.courses = [Course(course_id) for course_id in required_courses]
+        self.courses = [Course(course_id, filters) for course_id in required_courses]
         self.schedules = []
         self.hydrated = False
         self.time_start = datetime.now()
@@ -176,7 +175,7 @@ class ScheduleGenerator:
             "Hydrating courses (async) at", datetime.now() - self.time_start, "seconds"
         )
         async with aiohttp.ClientSession() as session:
-            tasks = [course.hydrate_sections_async(session) for course in self.courses]
+            tasks = [course.scrape_sections(session) for course in self.courses]
             await asyncio.gather(*tasks)
 
         self.hydrated = True
@@ -221,7 +220,9 @@ class ScheduleGenerator:
             grid = {block: {day: "" for day in DAYS} for block in time_blocks}
 
             visualize_schedule(schedule, time_blocks, grid)
-            print(f"Gap minutes: {schedule['total_gap_minutes']}")
+            print(
+                f"Gap minutes: {schedule['total_gap_minutes']}, Adjusted Cost: {schedule["cost"]}"
+            )
 
             color_map = get_color_map(schedule["sections"])
             for section in schedule["sections"]:
@@ -234,6 +235,29 @@ class ScheduleGenerator:
                 print(
                     f"{color}{section_id}{RESET} ({open_seats}/{seats}): {section.meetings}{', ' if instructors else ''}{', '.join(instructors)}"
                 )
+
+
+def str2bool(v: str) -> bool:
+    """Argparse utility for string boolean conversion.
+    - [Maxim](https://stackoverflow.com/a/43357954), [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/)
+
+    Args:
+        v (str): The string to convert.
+
+    Raises:
+        argparse.ArgumentTypeError: If the string is not a boolean.
+
+    Returns:
+        bool: The boolean value of the string.
+    """
+    if isinstance(v, bool):
+        return v
+    if v.lower() in ("yes", "true", "t", "y", "1"):
+        return True
+    elif v.lower() in ("no", "false", "f", "n", "0"):
+        return False
+    else:
+        raise argparse.ArgumentTypeError("Boolean value expected.")
 
 
 if __name__ == "__main__":
@@ -251,6 +275,41 @@ if __name__ == "__main__":
         default=1,
         help="Number of schedules to generate (default: 1)",
     )
+    parser.add_argument(
+        "-nsg",
+        "--no-shady-grove",
+        type=str2bool,
+        default=True,
+        help="Do not include ESG sections (default: True)",
+    )
+    parser.add_argument(
+        "-nfc",
+        "--no-freshman-connection",
+        type=str2bool,
+        default=True,
+        help="Do not include FC sections (default: True)",
+    )
+    parser.add_argument(
+        "-o",
+        "--open-seats",
+        type=str2bool,
+        default=True,
+        help="Include only sections with open seats (default: True)",
+    ),
+    parser.add_argument(
+        "-s",
+        "--earliest-start",
+        type=str,
+        default="8:00am",
+        help="The earliest start time (default: 8:00am)",
+    ),
+    parser.add_argument(
+        "-e",
+        "--latest-end",
+        type=str,
+        default="5:00pm",
+        help="The latest end time (default: 5:00pm)",
+    ),
 
     # parser.add_argument(
     #     "-v",
@@ -260,6 +319,15 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    generator = ScheduleGenerator(args.courses)
+    generator = ScheduleGenerator(
+        args.courses,
+        {
+            "no_esg": args.no_shady_grove,
+            "no_fc": args.no_freshman_connection,
+            "open_seats": args.open_seats,
+            "earliest_start": args.earliest_start,
+            "latest_end": args.latest_end,
+        },
+    )
     generator.generate_schedules(args.num)
     generator.visualize_schedules()
