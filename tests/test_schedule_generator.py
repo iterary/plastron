@@ -1,13 +1,19 @@
+"""Tests for the schedule generator."""
+
 from datetime import datetime
 from plastron.schedule_generator import (
     ScheduleGenerator,
     str2bool,
     generate_time_blocks,
     visualize_schedule,
+    get_color_map,
+    pad_ansi_string,
 )
+from plastron.section import Section
 
 
 def test_str2bool():
+    """Test that the str2bool method converts strings to booleans correctly."""
     assert str2bool("true") == True
     assert str2bool("false") == False
     assert str2bool("True") == True
@@ -42,8 +48,27 @@ def test_generate_time_blocks():
     assert time_blocks[3] == datetime(1900, 1, 1, 11, 30)
 
 
+def test_get_color_map():
+    """Test that the get_color_map method returns a correct color map for a given list of sections."""
+    sections = [
+        Section("Mock1", {"section_id": "Mock1", "meetings": []}),
+        Section("Mock2", {"section_id": "Mock2", "meetings": []}),
+    ]
+    color_map = get_color_map(sections)
+    assert len(color_map) == 2
+    assert color_map["Mock1"] == "\033[91m"
+    assert color_map["Mock2"] == "\033[92m"
+
+
+def test_pad_ansi_string():
+    """Test that the pad_ansi_string method pads an ANSI string to a given width."""
+    assert pad_ansi_string("Hello", 10) == "Hello     "
+    # ANSI escape codes should not be counted towards the width
+    assert pad_ansi_string("Hello\033[91m", 10) == "Hello\033[91m     "
+
+
 def test_visualize_schedule():
-    """Test that the visualize_schedule method resolves properly."""
+    """Test that the visualize_schedule method resolves properly without raising an error."""
     schedule = {
         "cost": 0,
         "total_gap_minutes": 0,

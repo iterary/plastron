@@ -1,3 +1,16 @@
+"""A module for the Plastron API.
+
+Attributes:
+    app_start_time (float): The start time of the API.
+    app (fastapi.FastAPI): The FastAPI app.
+    ScheduleFilters (pydantic.BaseModel): A model for the filters that can be applied to the schedule generation.
+    ScheduleRequest (pydantic.BaseModel): A model for the request to the schedule generation.
+    visualize_schedules (function): A function for visualizing schedules, served at /schedules/visualized.
+    generate_schedules (function): A function for generating schedules, served at /schedules.
+    read_root (function): A function for the root endpoint, served at /.
+    health (function): A function for the health endpoint, served at /health.
+"""
+
 import io
 import platform
 import psutil

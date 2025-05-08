@@ -63,6 +63,7 @@ def get_filter_function(key: tuple[str, Any]) -> Callable:
     Returns:
         function: The filter function.
     """
+    # If the filter function is not in the FILTER_FUNCTIONS dictionary, return a closure that always evaluates to True
     if key[0] not in FILTER_FUNCTIONS:
         return lambda _: True
 
@@ -94,6 +95,7 @@ class Course:
         # Merge default with provided
         self.filters = {**DEFAULT_FILTERS, **filters}
 
+    # Unused, previously used to hydrate sections from the umd.io API, but kept for reference
     # def hydrate_sections(self) -> list[Section]:
     #     """Hydrate the sections of the course synchronously. Sets hydrated to True if successful.
 
@@ -162,6 +164,7 @@ class Course:
         try:
             sections = await scrape_course(self.course_id, session)
             self.sections = self.filter_sections(sections)
+            # Reversing sections, on average, favors courses that are later in the day
             self.sections.reverse()
             self.hydrated = True
         except Exception as e:

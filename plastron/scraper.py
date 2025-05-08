@@ -1,3 +1,11 @@
+"""A module for scraping course information from Testudo SOC.
+
+Attributes:
+    is_spring (function): a function for checking if the current date is in the spring.
+    get_closest_term_id (function): a function for getting the closest term ID for the given date.
+    scrape_course (function): a function for scraping the given course ID from Testudo SOC.
+"""
+
 import aiohttp
 
 from bs4 import BeautifulSoup
