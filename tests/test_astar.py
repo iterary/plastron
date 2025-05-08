@@ -104,6 +104,7 @@ MOCK_SECTION_4 = Section(
 def test_adjusted_gap():
     """Test that the adjusted gap is calculated correctly."""
     gap = 45
+    # Within 0.1 of the expected value, to account for floating point imprecision
     assert abs(adjusted_gap(gap, 30, 50, 15) - 73.37) < 0.1
 
 
@@ -123,8 +124,26 @@ def test_optimize_schedule():
     course1.sections = [MOCK_SECTION_1, MOCK_SECTION_2]
     course2.sections = [MOCK_SECTION_3, MOCK_SECTION_4]
     courses = [course1, course2]
-    optimized_schedule = optimize_schedule(courses, 2)
+    optimized_schedules = optimize_schedule(courses, 2)
 
-    assert len(optimized_schedule) == 2
-    assert optimized_schedule[0]["sections"][0].section_id == "MockCourse1-10AM"
-    assert optimized_schedule[0]["sections"][1].section_id == "MockCourse2-11AM"
+    assert len(optimized_schedules) == 2
+    assert optimized_schedules[0]["sections"][0].section_id == "MockCourse1-10AM"
+    assert optimized_schedules[0]["sections"][1].section_id == "MockCourse2-11AM"
+
+
+def test_optimize_schedule_with_conflict():
+    """Test that schedules with conflicting sections are not returned."""
+    course1 = Course("MockCourse1")
+    course1.sections = [MOCK_SECTION_1]
+    course2 = Course("MockCourse2")
+    course2.sections = [MOCK_SECTION_1]
+    courses = [course1, course2]
+    optimized_schedules = optimize_schedule(courses)
+    assert len(optimized_schedules) == 0
+
+
+def test_optimize_empty_schedule():
+    """Test that an empty schedule is returned if no courses are provided."""
+    courses = []
+    optimized_schedules = optimize_schedule(courses)
+    assert len(optimized_schedules) == 0

@@ -121,7 +121,7 @@ class Section:
         return json.dumps(
             {
                 "section_id": self.section_id,
-                "meetings": [json.loads(str(meeting)) for meeting in self.meetings],
+                "meetings": [str(meeting) for meeting in self.meetings],
             },
             indent=2,
         )

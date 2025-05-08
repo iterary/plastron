@@ -2,9 +2,7 @@ name: pytest
 
 on:
   push:
-    branches: [ main, badges ]
   pull_request:
-    branches: [ main, badges ]
 
 jobs:
   test:

@@ -2,7 +2,7 @@
 
 from datetime import datetime
 from plastron.course import Course, get_filter_function
-from plastron.section import expand_days, parse_time
+from plastron.section import Section, expand_days, parse_time
 
 RAW_SECTIONS = [
     {
@@ -302,3 +302,35 @@ def test_parse_time():
     assert parse_time("11:00am") == datetime(1900, 1, 1, 11, 0)
     assert parse_time("11:00pm") == datetime(1900, 1, 1, 23, 0)
     assert parse_time("") is None
+
+
+def test_section_init():
+    """Test that the section init method properly constructs a section object and that it can be represented as a string."""
+    section = Section("INST314", RAW_SECTIONS[0])
+    assert section.section_id == "INST314-0101"
+    assert section.course_id == "INST314"
+    assert section.raw_data == RAW_SECTIONS[0]
+    assert (
+        str(section)
+        == """{
+  "section_id": "INST314-0101",
+  "meetings": [
+    "M 11:00AM - 11:50AM HJP0226",
+    "W 11:00AM - 11:50AM HJP0226",
+    "F 08:00AM - 08:50AM HBK0103"
+  ]
+}"""
+    )
+
+
+def test_course_init():
+    """Test that the course init method properly constructs a course object and that it can be represented as a string."""
+    course = Course("INST314")
+    assert course.course_id == "INST314"
+    assert (
+        str(course)
+        == """{
+  "course_id": "INST314",
+  "sections": []
+}"""
+    )

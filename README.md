@@ -6,7 +6,7 @@ the nearly flat part of a turtle's shell
 
 ![Plastron Output](./assets/plastron_output.png)
 
-Plastron is a teensy-weensy microservice that generates optimal schedules for courses at UMD. Based on user input, it will scrape Testudo's course catalog, find suitable sections, and populate a schedule that minimizes time between classes.
+Plastron is a teensy-weensy microservice that generates optimal schedules for courses at UMD. Based on user input, it will scrape Testudo's course catalog, find suitable sections, and populate a schedule that minimizes time between classes. Made as a final project for INST326.
 
 ### Generate schedules from the command line
 
@@ -50,13 +50,13 @@ poetry install
 - Enter interpreter path -> Find
 - Find and choose `.venv/Scripts/python.exe`
 
-### To run the development server
+### Run the API server locally
 
 ```bash
 uvicorn plastron.api:app --reload
 ```
 
-You can access the local server at [http://localhost:8000/](http://localhost:8000/)
+You can access the development server at [http://localhost:8000/](http://localhost:8000/)
 
 While docs are available at [http://localhost:8000/docs](http://localhost:8000/docs)
 
@@ -77,3 +77,15 @@ Navigate to https://plastron.onrender.com/docs and run the example request bodie
 Confirm that schedules are generated properly by running the command line example or hitting the `/schedules/visualized` endpoint and comparing the outputted weight against the expected weight per the formula below.
 
 ![Weight Formula](./assets/formula.png)
+
+### Annotated Bibliography
+
+Dijkstra, E. W. (1959). A note on two problems in connexion with graphs. *Numerische Mathematik, 1*(1), 269–271. 
+
+- Used in project proposal as a reference for the search algorithm
+
+Acknowledgements:
+
+- [BetterStack](https://uptime.betterstack.com/) for providing uptime monitoring to ensure the API is always up
+- [Testudo](https://app.testudo.umd.edu/soc/) for providing the course catalog
+- [Maxim](https://stackoverflow.com/a/43357954) for the `str2bool` utility function

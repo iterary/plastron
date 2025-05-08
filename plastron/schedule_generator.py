@@ -10,6 +10,7 @@ Attributes:
     get_color_map (function): a function for getting a color map for the sections.
     visualize_schedule (function): a function for visualizing a schedule by printing it to the console.
     ScheduleGenerator (class): a class for generating schedules.
+    str2bool (function): a function for converting a string to a boolean.
 """
 
 import aiohttp
