@@ -20,7 +20,7 @@ import time
 import uvicorn
 
 from datetime import datetime, timedelta
-from fastapi import FastAPI, Query
+from fastapi import FastAPI, Query, HTTPException
 from fastapi.responses import PlainTextResponse
 from plastron.schedule_generator import ScheduleGenerator
 from pydantic import BaseModel, Field
@@ -78,6 +78,10 @@ async def visualize_schedules(
     Returns:
         str: The visualized schedules.
     """
+    # Enforce max of 10 courses
+    if len(data.courses) > 10:
+        raise HTTPException(status_code=422, detail="Maximum of 10 courses allowed.")
+
     schedule_generator = ScheduleGenerator(data.courses, data.filters.model_dump())
 
     await schedule_generator.hydrate_courses_async()
@@ -110,6 +114,9 @@ async def generate_schedules(data: ScheduleRequest):
     Returns:
         list: A list of schedules.
     """
+    if len(data.courses) > 10:
+        raise HTTPException(status_code=422, detail="Maximum of 10 courses allowed.")
+
     schedule_generator = ScheduleGenerator(data.courses, data.filters.model_dump())
 
     await schedule_generator.hydrate_courses_async()
