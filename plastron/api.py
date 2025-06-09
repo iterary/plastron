@@ -44,8 +44,8 @@ class ScheduleFilters(BaseModel):
     no_esg: Optional[bool] = True
     no_fc: Optional[bool] = True
     open_seats: Optional[bool] = False
-    earliest_start: Optional[str] = "8:00am"
-    latest_end: Optional[str] = "5:00pm"
+    earliest_start: Optional[str] = "7:30am"
+    latest_end: Optional[str] = "6:30pm"
 
 
 class ScheduleRequest(BaseModel):

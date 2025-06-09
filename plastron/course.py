@@ -45,8 +45,8 @@ DEFAULT_FILTERS = {
     "no_esg": True,
     "no_fc": True,
     "open_seats": True,
-    "earliest_start": "8:00am",
-    "latest_end": "5:00pm",
+    "earliest_start": "7:30am",
+    "latest_end": "6:30pm",
     # Not created yet
     "restrict_days": ["Tu"],
     # Not created yet, to leave time open for lunch?
