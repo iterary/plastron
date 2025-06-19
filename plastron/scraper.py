@@ -69,6 +69,11 @@ async def scrape_course(course_id: str, session: aiohttp.ClientSession):
             return []
 
         course_info = first_course.select_one(".course-info-container")
+        course_basic_info = course_info.select_one(".course-basic-info-container")
+        course_name = course_basic_info.select_one(".course-title").get_text(strip=True)
+        course_credits = course_basic_info.select_one(".course-min-credits").get_text(
+            strip=True
+        )
         sections = []
 
     # Scrape each section
@@ -82,6 +87,8 @@ async def scrape_course(course_id: str, session: aiohttp.ClientSession):
             "course": course_id,
             "section_id": f"{course_id}-{number}",
             "number": number,
+            "course_name": course_name,
+            "course_credits": course_credits,
             "instructors": [
                 el.get_text(strip=True)
                 for el in section_info.select(
