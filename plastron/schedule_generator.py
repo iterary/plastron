@@ -222,7 +222,7 @@ class ScheduleGenerator:
 
             visualize_schedule(schedule, time_blocks, grid)
             print(
-                f"Gap minutes: {schedule['total_gap_minutes']}, Adjusted Cost: {schedule["cost"]}"
+                f"Gap minutes: {schedule['total_gap_minutes']}, Adjusted Cost: {schedule['cost']}"
             )
 
             color_map = get_color_map(schedule["sections"])

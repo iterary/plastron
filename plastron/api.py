@@ -12,6 +12,7 @@ Attributes:
 """
 
 import io
+import os
 import platform
 import psutil
 import re
@@ -20,11 +21,29 @@ import time
 import uvicorn
 
 from datetime import datetime, timedelta
-from fastapi import FastAPI, Query, HTTPException
+from dotenv import load_dotenv
+from fastapi import FastAPI, Query, HTTPException, Security, Depends, Header
 from fastapi.responses import PlainTextResponse
 from plastron.schedule_generator import ScheduleGenerator
 from pydantic import BaseModel, Field
 from typing import List, Optional
+
+load_dotenv()
+
+API_KEY = os.getenv("API_KEY")
+API_KEY_NAME = "X-API-Key"
+KEY_REQUIRED = os.getenv("KEY_REQUIRED", "false").lower() == "true"
+
+print("API_KEY_REQUIRED:", KEY_REQUIRED)
+
+
+async def verify_api_key(
+    x_api_key: Optional[str] = Header(None, description="API Key")
+) -> str:
+    if KEY_REQUIRED and x_api_key != API_KEY:
+        raise HTTPException(status_code=401, detail="Invalid or missing API Key")
+    return x_api_key
+
 
 app_start_time = time.time()
 app = FastAPI(
@@ -68,6 +87,7 @@ async def visualize_schedules(
     colored: bool = Query(
         False, description="Whether to color the schedules. Only applies in terminal."
     ),
+    api_key: str = Security(verify_api_key),
 ) -> str:
     """Generate and visualize schedules.
 
@@ -105,7 +125,10 @@ async def visualize_schedules(
 
 
 @app.post("/schedules")
-async def generate_schedules(data: ScheduleRequest):
+async def generate_schedules(
+    data: ScheduleRequest,
+    api_key: str = Security(verify_api_key),
+):
     """Generate schedules.
 
     Args:

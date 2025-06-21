@@ -29,6 +29,8 @@ Arguments:
 
 Deployed at: https://plastron.onrender.com/
 
+Not for production use. Seriously--don't use this, it's on 0.1x CPU cores.
+
 ## Development
 
 ### Get Poetry as a package manager
