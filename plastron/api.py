@@ -112,10 +112,10 @@ async def visualize_schedules(
     """
 
     for course in data.courses:
-        if len(course) < 6:
+        if len(course) < 7:
             raise HTTPException(
                 status_code=422,
-                detail="Each course must be at least 6 characters long.",
+                detail="Each course must be at least 7 characters long.",
             )
 
     if len(data.courses) > 10:
@@ -144,7 +144,7 @@ async def visualize_schedules(
 
 
 @app.post("/schedules")
-@limiter.limit("20/minute")
+@limiter.limit("30/minute")
 async def generate_schedules(
     request: Request,
     data: ScheduleRequest,
@@ -162,10 +162,10 @@ async def generate_schedules(
     print(len(data.courses))
 
     for course in data.courses:
-        if len(course) < 6:
+        if len(course) < 7:
             raise HTTPException(
                 status_code=422,
-                detail="Each course must be at least 6 characters long.",
+                detail="Each course must be at least 7 characters long.",
             )
 
     if len(data.courses) > 10:

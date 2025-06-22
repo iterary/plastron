@@ -204,16 +204,19 @@ class ScheduleGenerator:
         """Visualize the schedules."""
         for schedule in self.schedules:
             # Finds the range of time blocks that will be displayed
-            earliest_start = min(
-                meeting.start_time
+
+            all_meetings = [
+                meeting
                 for section in schedule["sections"]
+                if section.meetings
                 for meeting in section.meetings
-            )
-            latest_end = max(
-                meeting.end_time
-                for section in schedule["sections"]
-                for meeting in section.meetings
-            )
+            ]
+
+            if not all_meetings:
+                continue
+
+            earliest_start = min(meeting.start_time for meeting in all_meetings)
+            latest_end = max(meeting.end_time for meeting in all_meetings)
             time_blocks = generate_time_blocks(
                 start=earliest_start.strftime("%I:%M%p"),
                 end=latest_end.strftime("%I:%M%p"),

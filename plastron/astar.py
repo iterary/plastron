@@ -135,6 +135,10 @@ def optimize_schedule(
     visited = set()
     best_complete_cost = float("inf")
 
+    # Sort courses by number of sections, least to most
+    # This reduces branching early in the search space
+    courses.sort(key=lambda x: len(x.sections))
+
     if len(courses) == 0:
         return []
 
@@ -156,17 +160,21 @@ def optimize_schedule(
 
             heapq.heappush(results, (cost, next(result_counter), result))
 
+            if len(results) >= len(courses) * 250:  # Keep some buffer
+                break
+
             continue
 
         # Generate next states by choosing sections from the next course
         for section in courses[course_idx].sections:
-            new_path = path + [section]
-
             cost, stats = calculate_weight(path, section, gap_exponent)
 
-            if cost == float("inf") or cost > best_complete_cost + 60:
+            pruning_threshold = len(courses) * 10 - course_idx * 10
+
+            if cost == float("inf") or cost > best_complete_cost + pruning_threshold:
                 continue  # Prune conflicts or paths that are worse than the best complete schedule
 
+            new_path = path + [section]
             new_state = (
                 cost,
                 next(counter),
@@ -180,5 +188,5 @@ def optimize_schedule(
                 visited.add(state_id)
                 heapq.heappush(queue, new_state)
 
-    # print(len(results))
+    print(len(results))
     return [result for _, _, result in heapq.nsmallest(top, results)]
