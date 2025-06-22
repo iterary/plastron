@@ -22,10 +22,12 @@ import uvicorn
 
 from datetime import datetime, timedelta
 from dotenv import load_dotenv
-from fastapi import FastAPI, Query, HTTPException, Security, Depends, Header
+from fastapi import FastAPI, Query, HTTPException, Security, Header, Request
 from fastapi.responses import PlainTextResponse
 from plastron.schedule_generator import ScheduleGenerator
 from pydantic import BaseModel, Field
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
 from typing import List, Optional
 
 load_dotenv()
@@ -36,6 +38,13 @@ KEY_REQUIRED = os.getenv("KEY_REQUIRED", "false").lower() == "true"
 
 print("API_KEY_REQUIRED:", KEY_REQUIRED)
 
+app_start_time = time.time()
+app = FastAPI(
+    title="Plastron API",
+    description="A teensy-weensy microservice that generates optimal schedules for UMD classes.",
+    version="0.1.0",
+)
+
 
 async def verify_api_key(
     x_api_key: Optional[str] = Header(None, description="API Key")
@@ -45,12 +54,15 @@ async def verify_api_key(
     return x_api_key
 
 
-app_start_time = time.time()
-app = FastAPI(
-    title="Plastron API",
-    description="A teensy-weensy microservice that generates optimal schedules for UMD classes.",
-    version="0.1.0",
-)
+def get_real_ip(request) -> str:
+    ip = request.headers.get("x-ip", get_remote_address(request))
+    print(ip)
+    return ip
+
+
+limiter = Limiter(key_func=get_real_ip)
+app.state.limiter = limiter
+app.add_exception_handler(429, _rate_limit_exceeded_handler)
 
 
 class ScheduleFilters(BaseModel):
@@ -98,7 +110,14 @@ async def visualize_schedules(
     Returns:
         str: The visualized schedules.
     """
-    # Enforce max of 10 courses
+
+    for course in data.courses:
+        if len(course) < 6:
+            raise HTTPException(
+                status_code=422,
+                detail="Each course must be at least 6 characters long.",
+            )
+
     if len(data.courses) > 10:
         raise HTTPException(status_code=422, detail="Maximum of 10 courses allowed.")
 
@@ -125,7 +144,9 @@ async def visualize_schedules(
 
 
 @app.post("/schedules")
+@limiter.limit("20/minute")
 async def generate_schedules(
+    request: Request,
     data: ScheduleRequest,
     api_key: str = Security(verify_api_key),
 ):
@@ -137,6 +158,16 @@ async def generate_schedules(
     Returns:
         list: A list of schedules.
     """
+    print(data.courses)
+    print(len(data.courses))
+
+    for course in data.courses:
+        if len(course) < 6:
+            raise HTTPException(
+                status_code=422,
+                detail="Each course must be at least 6 characters long.",
+            )
+
     if len(data.courses) > 10:
         raise HTTPException(status_code=422, detail="Maximum of 10 courses allowed.")
 
