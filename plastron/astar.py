@@ -105,88 +105,163 @@ def calculate_weight(
     )
 
 
+# def optimize_schedule(
+#     courses: list[Course], top: int = 1, gap_exponent: float = 0.75
+# ) -> list:
+#     """Uniform cost search for the top k optimal schedules.
+
+#     Args:
+#         courses (list[Course]): List of courses with sections and meetings.
+#         top (int, optional): How many schedules to return. Defaults to 3.
+
+#     Returns:
+#         list[dict]: List of top k optimal schedules.
+#     """
+
+#     # Tiebreakers for heapq
+#     counter = count()
+#     result_counter = count()
+
+#     start_state = (
+#         0,
+#         next(counter),
+#         [],
+#         0,
+#         {},
+#     )  # (cost, counter, path, course_index, stats)
+#     queue = [start_state]
+
+#     results = []
+#     visited = set()
+#     best_complete_cost = float("inf")
+
+#     # Sort courses by number of sections, least to most
+#     # This reduces branching early in the search space
+#     courses.sort(key=lambda x: len(x.sections))
+
+#     if len(courses) == 0:
+#         return []
+
+#     # While we still have stuff to explore
+#     while queue:
+#         # Python's heapq implementation is pretty helpful, we can mooch off of it
+#         cost, _, path, course_idx, stats = heapq.heappop(queue)
+
+#         # If we've completed the current path
+#         if course_idx == len(courses):
+#             best_complete_cost = min(best_complete_cost, cost)
+
+#             result = {
+#                 "cost": cost,
+#                 "total_gap_minutes": stats["total_gap"],
+#                 "num_days_with_meetings": stats["num_days_with_meetings"],
+#                 "sections": path,
+#             }
+
+#             heapq.heappush(results, (cost, next(result_counter), result))
+
+#             if len(results) >= len(courses) * 1000:  # Keep some buffer
+#                 break
+
+#             continue
+
+#         # Generate next states by choosing sections from the next course
+#         for section in courses[course_idx].sections:
+#             cost, stats = calculate_weight(path, section, gap_exponent)
+
+#             pruning_threshold = len(courses) * 10 - course_idx * 10
+
+#             if cost == float("inf") or cost > best_complete_cost + pruning_threshold:
+#                 continue  # Prune conflicts or paths that are worse than the best complete schedule
+
+#             new_path = path + [section]
+#             new_state = (
+#                 cost,
+#                 next(counter),
+#                 new_path,
+#                 course_idx + 1,
+#                 stats,
+#             )
+#             state_id = (course_idx + 1, tuple(s.section_id for s in new_path))
+
+#             if state_id not in visited:
+#                 visited.add(state_id)
+#                 heapq.heappush(queue, new_state)
+
+#     print(len(results))
+#     return [result for _, _, result in heapq.nsmallest(top, results)]
+
+
 def optimize_schedule(
-    courses: list[Course], top: int = 1, gap_exponent: float = 0.75
+    courses: list[Course],
+    top: int = 1,
+    gap_exponent: float = 0.75,
+    beam_width: int = 500,
 ) -> list:
-    """Uniform cost search for the top k optimal schedules.
+    """Beam search for the top k optimal schedules. Needed because my $10/month server can't handle the full search space."""
+    from heapq import heappush, heappop, nsmallest
 
-    Args:
-        courses (list[Course]): List of courses with sections and meetings.
-        top (int, optional): How many schedules to return. Defaults to 3.
-
-    Returns:
-        list[dict]: List of top k optimal schedules.
-    """
-
-    # Tiebreakers for heapq
     counter = count()
     result_counter = count()
 
     start_state = (
-        0,
-        next(counter),
-        [],
-        0,
-        {},
-    )  # (cost, counter, path, course_index, stats)
-    queue = [start_state]
+        0,  # cost
+        next(counter),  # tiebreaker
+        [],  # path
+        0,  # course_idx
+        {},  # stats
+    )
 
+    queue = [start_state]
     results = []
-    visited = set()
     best_complete_cost = float("inf")
 
-    # Sort courses by number of sections, least to most
-    # This reduces branching early in the search space
     courses.sort(key=lambda x: len(x.sections))
+    courses = list(filter(lambda x: len(x.sections) > 0, courses))
 
     if len(courses) == 0:
         return []
 
-    # While we still have stuff to explore
     while queue:
-        # Python's heapq implementation is pretty helpful, we can mooch off of it
-        cost, _, path, course_idx, stats = heapq.heappop(queue)
+        next_queue = []  # Candidates for the next level (next course)
 
-        # If we've completed the current path
-        if course_idx == len(courses):
-            best_complete_cost = min(best_complete_cost, cost)
+        for _ in range(len(queue)):
+            cost, _, path, course_idx, stats = heappop(queue)
 
-            result = {
-                "cost": cost,
-                "total_gap_minutes": stats["total_gap"],
-                "num_days_with_meetings": stats["num_days_with_meetings"],
-                "sections": path,
-            }
+            if course_idx == len(courses):
+                best_complete_cost = min(best_complete_cost, cost)
+                result = {
+                    "cost": cost,
+                    "total_gap_minutes": stats["total_gap"],
+                    "num_days_with_meetings": stats["num_days_with_meetings"],
+                    "sections": path,
+                }
+                heappush(results, (cost, next(result_counter), result))
+                continue
 
-            heapq.heappush(results, (cost, next(result_counter), result))
+            for section in courses[course_idx].sections:
+                new_cost, new_stats = calculate_weight(path, section, gap_exponent)
 
-            if len(results) >= len(courses) * 250:  # Keep some buffer
-                break
+                if new_cost == float("inf"):
+                    continue
 
-            continue
+                new_path = path + [section]
 
-        # Generate next states by choosing sections from the next course
-        for section in courses[course_idx].sections:
-            cost, stats = calculate_weight(path, section, gap_exponent)
+                # Optionally use a pruning threshold here too
+                pruning_threshold = len(courses) * 10 - course_idx * 10
+                if new_cost > best_complete_cost + pruning_threshold:
+                    continue
 
-            pruning_threshold = len(courses) * 10 - course_idx * 10
+                new_state = (
+                    new_cost,
+                    next(counter),
+                    new_path,
+                    course_idx + 1,
+                    new_stats,
+                )
+                heappush(next_queue, new_state)
 
-            if cost == float("inf") or cost > best_complete_cost + pruning_threshold:
-                continue  # Prune conflicts or paths that are worse than the best complete schedule
+        # Retain only the best `beam_width` states at this depth
+        queue = nsmallest(beam_width, next_queue)
 
-            new_path = path + [section]
-            new_state = (
-                cost,
-                next(counter),
-                new_path,
-                course_idx + 1,
-                stats,
-            )
-            state_id = (course_idx + 1, tuple(s.section_id for s in new_path))
-
-            if state_id not in visited:
-                visited.add(state_id)
-                heapq.heappush(queue, new_state)
-
-    print(len(results))
-    return [result for _, _, result in heapq.nsmallest(top, results)]
+    return [r for _, _, r in nsmallest(top, results)]

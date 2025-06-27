@@ -267,9 +267,11 @@ def str2bool(v: str) -> bool:
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Generate class schedules")
     parser.add_argument(
-        "courses",
+        "-c",
+        "--courses",
         metavar="COURSE_ID",
         nargs="+",
+        required=True,
         help="List of course IDs (e.g. MATH101)",
     )
     parser.add_argument(
@@ -314,6 +316,13 @@ if __name__ == "__main__":
         default="5:00pm",
         help="The latest end time (default: 5:00pm)",
     ),
+    parser.add_argument(
+        "-ai",
+        "--avoid-instructors",
+        nargs="+",
+        default=[],
+        help="The list of instructors to avoid (default: [])",
+    ),
 
     # parser.add_argument(
     #     "-v",
@@ -331,6 +340,7 @@ if __name__ == "__main__":
             "open_seats": args.open_seats,
             "earliest_start": args.earliest_start,
             "latest_end": args.latest_end,
+            "avoid_instructors": args.avoid_instructors,
         },
     )
     generator.generate_schedules(args.num)

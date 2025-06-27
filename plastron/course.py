@@ -39,6 +39,9 @@ FILTER_FUNCTIONS = {
         <= datetime.strptime(time, "%I:%M%p")
         for meeting in section["meetings"]
     ),
+    "avoid_instructors": lambda instructors: lambda section: all(
+        instructor not in section["instructors"] for instructor in instructors
+    ),
 }
 
 DEFAULT_FILTERS = {
@@ -51,6 +54,7 @@ DEFAULT_FILTERS = {
     "restrict_days": ["Tu"],
     # Not created yet, to leave time open for lunch?
     "restrict_time_range": [("12:00pm", "1:00pm")],
+    "avoid_instructors": [],
 }
 
 

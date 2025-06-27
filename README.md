@@ -17,13 +17,14 @@ py -m plastron.schedule_generator INST335 INST314 INST311 INST327 -n 3
 ```
 
 Arguments:
-- `Course IDs`: List of course IDs (e.g. INST335 INST314 INST311 INST327)
+- `-c` or `--courses`: List of course IDs (e.g. INST335 INST314 INST311 INST327)
 - `-n` or `--num`: Number of schedules to generate (default: 1)
 - `-nsg` or `--no-shady-grove`: Do not include ESG sections (default: True)
 - `-nfc` or `--no-freshman-connection`: Do not include FC sections (default: True)
 - `-o` or `--open-seats`: Include only sections with open seats (default: True)
 - `-s` or `--earliest-start`: The earliest start time (default: 8:00am)
 - `-e` or `--latest-end`: The latest end time (default: 5:00pm)
+- `-ai` or `--avoid-instructors`: List of instructors to avoid (in form of "FIRST LAST")
 
 ### Generate schedules via API
 

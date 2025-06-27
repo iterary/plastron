@@ -1,10 +1,18 @@
 """Tests for the API."""
 
 from fastapi.testclient import TestClient
+from dotenv import load_dotenv
+import os
 
 from plastron.api import app
 
 client = TestClient(app)
+
+load_dotenv()
+
+API_KEY = os.getenv("API_KEY")
+API_KEY_NAME = "X-API-Key"
+KEY_REQUIRED = os.getenv("KEY_REQUIRED", "false").lower() == "true"
 
 
 def test_api_generate_schedules():
