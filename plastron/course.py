@@ -50,11 +50,11 @@ DEFAULT_FILTERS = {
     "open_seats": True,
     "earliest_start": "7:30am",
     "latest_end": "6:30pm",
+    "avoid_instructors": [],
     # Not created yet
     "restrict_days": ["Tu"],
     # Not created yet, to leave time open for lunch?
     "restrict_time_range": [("12:00pm", "1:00pm")],
-    "avoid_instructors": [],
 }
 
 

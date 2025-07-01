@@ -77,6 +77,7 @@ class ScheduleFilters(BaseModel):
     open_seats: Optional[bool] = False
     earliest_start: Optional[str] = "7:30am"
     latest_end: Optional[str] = "6:30pm"
+    avoid_instructors: Optional[List[str]] = []
 
 
 class ScheduleRequest(BaseModel):
