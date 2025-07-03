@@ -217,7 +217,6 @@ def optimize_schedule(
     best_complete_cost = float("inf")
 
     courses.sort(key=lambda x: len(x.sections))
-    courses = list(filter(lambda x: len(x.sections) > 0, courses))
 
     if len(courses) == 0:
         return []

@@ -12,7 +12,7 @@ import json
 # import requests
 
 from datetime import datetime
-from plastron.section import Section
+from plastron.section import Section, expand_days
 from plastron.scraper import scrape_course
 from typing import Any, Callable
 
@@ -42,6 +42,11 @@ FILTER_FUNCTIONS = {
     "avoid_instructors": lambda instructors: lambda section: all(
         instructor not in section["instructors"] for instructor in instructors
     ),
+    "max_waitlist": lambda limit: lambda section: int(section["waitlist"]) <= limit,
+    "restrict_days": lambda days: lambda section: not any(
+        any(day in days for day in expand_days(meeting["days"]))
+        for meeting in section["meetings"]
+    ),
 }
 
 DEFAULT_FILTERS = {
@@ -51,10 +56,21 @@ DEFAULT_FILTERS = {
     "earliest_start": "7:30am",
     "latest_end": "6:30pm",
     "avoid_instructors": [],
-    # Not created yet
-    "restrict_days": ["Tu"],
-    # Not created yet, to leave time open for lunch?
-    "restrict_time_range": [("12:00pm", "1:00pm")],
+    "max_waitlist": 9999,
+    "restrict_days": [],
+    # # Not created yet, to leave time open for lunch?
+    # "restrict_time_range": [("12:00pm", "1:00pm")],
+}
+
+READABLE_FILTERS = {
+    "no_esg": "no ESG sections",
+    "no_fc": "no FC sections",
+    "open_seats": "open seats",
+    "earliest_start": "earliest start",
+    "latest_end": "latest end",
+    "avoid_instructors": "instructor preferences",
+    "max_waitlist": "max waitlist",
+    "restrict_days": "restricted days",
 }
 
 
@@ -94,67 +110,9 @@ class Course:
         self.course_id = course_id.upper()
         self.hydrated = False
         self.sections = []
-        # self.url = f"https://api.umd.io/v1/courses/{self.course_id}/sections"
 
         # Merge default with provided
         self.filters = {**DEFAULT_FILTERS, **filters}
-
-    # Unused, previously used to hydrate sections from the umd.io API, but kept for reference
-    # def hydrate_sections(self) -> list[Section]:
-    #     """Hydrate the sections of the course synchronously. Sets hydrated to True if successful.
-
-    #     Raises:
-    #         Exception: If hydration fails.
-
-    #     Returns:
-    #         list[Section]: The sections of the course.
-    #     """
-    #     try:
-    #         response = requests.get(self.url)
-    #         data = response.json()
-
-    #         if not isinstance(data, list) and "error_code" in data:
-    #             raise Exception(data["message"])
-
-    #         self.sections = self.filter_sections(data)
-    #         self.hydrated = True
-    #     except Exception as e:
-    #         print(f"Error hydrating sections for course {self.course_id}: {e}")
-    #         raise e
-    #     finally:
-    #         return self.sections
-
-    # async def hydrate_sections_async(
-    #     self, session: aiohttp.ClientSession
-    # ) -> list[Section]:
-    #     """Hydrate the sections of the course asynchronously. Sets hydrated to True if successful.
-
-    #     Args:
-    #         session (aiohttp.ClientSession): The async session to use.
-
-    #     Raises:
-    #         Exception: If hydration fails.
-
-    #     Returns:
-    #         list[Section]: The sections of the course.
-    #     """
-    #     try:
-    #         # print(f"Hydrating sections for course {self.course_id} at {datetime.now()}")
-    #         async with session.get(self.url) as response:
-    #             data = await response.json()
-
-    #             if not isinstance(data, list) and "error_code" in data:
-    #                 raise Exception(data["message"])
-
-    #             self.sections = self.filter_sections(data)
-    #             self.sections.reverse()
-    #             self.hydrated = True
-    #     except Exception as e:
-    #         print(f"Error hydrating sections for course {self.course_id}: {e}")
-    #         raise e
-
-    #     # print(f"Hydrated sections for course {self.course_id} at {datetime.now()}")
-    #     return self.sections
 
     async def scrape_sections(self, session: aiohttp.ClientSession):
         """Hydrate the sections of the course by scraping Testudo SOC website. Sets hydrated to True if successful.
@@ -167,23 +125,15 @@ class Course:
         """
         try:
             sections = await scrape_course(self.course_id, session)
+
             self.sections = self.filter_sections(sections)
+
             # Reversing sections, on average, favors courses that are later in the day
             self.sections.reverse()
             self.hydrated = True
         except Exception as e:
             print(f"Error scraping sections for course {self.course_id}: {e}")
             raise e
-
-    # TODO: Cache responses from scraping and use them if available
-    # Upstash + Redis is a good choice here
-    async def get_cached_response(self):
-        """Get the cached response for the course.
-
-        Returns:
-            dict: The cached response.
-        """
-        pass
 
     def filter_sections(self, raw_sections: list[dict]) -> list[Section]:
         """Filter the sections of the course.
@@ -194,13 +144,84 @@ class Course:
         Returns:
             list[Section]: The sections of the course.
         """
-        return [
-            Section(self.course_id, section_data)
+        if not raw_sections:
+            raise Exception(
+                f"No sections exist for {self.course_id}. Please make sure this course is being offered."
+            )
+
+        filtered_sections = [
+            section_data
             for section_data in raw_sections
             if all(
                 get_filter_function(filter)(section_data)
                 for filter in self.filters.items()
             )
+        ]
+
+        if not filtered_sections:
+            # Check which filters are eliminating all sections
+            failing_filters = []
+            for filter_name, filter_value in self.filters.items():
+                if not any(
+                    get_filter_function((filter_name, filter_value))(section_data)
+                    for section_data in raw_sections
+                ):
+                    failing_filters.append(
+                        (READABLE_FILTERS[filter_name], filter_value)
+                    )
+
+            if failing_filters:
+                raise Exception(
+                    f"Could not find any sections of {self.course_id} with {', '.join(str(filter) for filter in failing_filters)}.\n"
+                    "Consider relaxing these filters."
+                )
+            else:
+                filter_stats = []
+                total_sections = len(raw_sections)
+
+                for filter_name, filter_value in self.filters.items():
+                    sections_passing = sum(
+                        1
+                        for section_data in raw_sections
+                        if get_filter_function((filter_name, filter_value))(
+                            section_data
+                        )
+                    )
+                    sections_eliminated = total_sections - sections_passing
+                    filter_stats.append(
+                        (
+                            READABLE_FILTERS[filter_name],
+                            sections_eliminated,
+                            sections_passing,
+                        )
+                    )
+
+                # Sort by most restrictive (eliminates most sections)
+                filter_stats.sort(key=lambda x: x[1], reverse=True)
+
+                # Create a helpful message
+                restrictive_filters = [
+                    f"{name} (eliminates {eliminated}/{total_sections})"
+                    for name, eliminated, passing in filter_stats[
+                        :3
+                    ]  # Show top 3 most restrictive
+                    if eliminated > 0
+                ]
+
+                if restrictive_filters:
+                    raise Exception(
+                        f"Could not find any sections for {self.course_id} that satisfy all filters simultaneously.\n"
+                        f"Most restrictive filters: {', '.join(restrictive_filters)}.\n"
+                        f"Consider relaxing these filters."
+                    )
+                else:
+                    raise Exception(
+                        f"Could not find any sections for {self.course_id} that satisfy all filters simultaneously.\n"
+                        f"Consider relaxing some filters."
+                    )
+
+        return [
+            Section(self.course_id, section_data) for section_data in filtered_sections
         ]
 
     def __repr__(self):
@@ -216,3 +237,13 @@ class Course:
             },
             indent=2,
         )
+
+    # TODO: Cache responses from scraping and use them if available
+    # Upstash + Redis is a good choice here
+    async def get_cached_response(self):
+        """Get the cached response for the course.
+
+        Returns:
+            dict: The cached response.
+        """
+        pass

@@ -203,6 +203,7 @@ class ScheduleGenerator:
     def visualize_schedules(self) -> None:
         """Visualize the schedules."""
         for schedule in self.schedules:
+            has_meetings = True
             # Finds the range of time blocks that will be displayed
 
             all_meetings = [
@@ -213,17 +214,19 @@ class ScheduleGenerator:
             ]
 
             if not all_meetings:
-                continue
+                has_meetings = False
 
-            earliest_start = min(meeting.start_time for meeting in all_meetings)
-            latest_end = max(meeting.end_time for meeting in all_meetings)
-            time_blocks = generate_time_blocks(
-                start=earliest_start.strftime("%I:%M%p"),
-                end=latest_end.strftime("%I:%M%p"),
-            )
-            grid = {block: {day: "" for day in DAYS} for block in time_blocks}
+            if has_meetings:
+                earliest_start = min(meeting.start_time for meeting in all_meetings)
+                latest_end = max(meeting.end_time for meeting in all_meetings)
+                time_blocks = generate_time_blocks(
+                    start=earliest_start.strftime("%I:%M%p"),
+                    end=latest_end.strftime("%I:%M%p"),
+                )
+                grid = {block: {day: "" for day in DAYS} for block in time_blocks}
 
-            visualize_schedule(schedule, time_blocks, grid)
+                visualize_schedule(schedule, time_blocks, grid)
+
             print(
                 f"Gap minutes: {schedule['total_gap_minutes']}, Adjusted Cost: {schedule['cost']}"
             )
@@ -313,7 +316,7 @@ if __name__ == "__main__":
         "-e",
         "--latest-end",
         type=str,
-        default="5:00pm",
+        default="8:00pm",
         help="The latest end time (default: 5:00pm)",
     ),
     parser.add_argument(
@@ -322,6 +325,20 @@ if __name__ == "__main__":
         nargs="+",
         default=[],
         help="The list of instructors to avoid (default: [])",
+    ),
+    parser.add_argument(
+        "-mw",
+        "--max-waitlist",
+        type=int,
+        default=9999,
+        help="The maximum waitlist size (default: 9999)",
+    ),
+    parser.add_argument(
+        "-rd",
+        "--restrict-days",
+        nargs="+",
+        default=[],
+        help="The list of days to restrict (default: [])",
     ),
 
     # parser.add_argument(
@@ -341,6 +358,8 @@ if __name__ == "__main__":
             "earliest_start": args.earliest_start,
             "latest_end": args.latest_end,
             "avoid_instructors": args.avoid_instructors,
+            "max_waitlist": args.max_waitlist,
+            "restrict_days": args.restrict_days,
         },
     )
     generator.generate_schedules(args.num)

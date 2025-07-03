@@ -25,6 +25,8 @@ Arguments:
 - `-s` or `--earliest-start`: The earliest start time (default: 8:00am)
 - `-e` or `--latest-end`: The latest end time (default: 5:00pm)
 - `-ai` or `--avoid-instructors`: List of instructors to avoid (in form of "FIRST LAST")
+- `-mw` or `--max-waitlist`: Maximum waitlist size (default: 9999)
+- `-rd` or `--restrict-days`: List of days to restrict (default: [])
 
 ### Generate schedules via API
 

@@ -78,6 +78,8 @@ class ScheduleFilters(BaseModel):
     earliest_start: Optional[str] = "7:30am"
     latest_end: Optional[str] = "6:30pm"
     avoid_instructors: Optional[List[str]] = []
+    max_waitlist: Optional[int] = 9999
+    restrict_days: Optional[List[str]] = []
 
 
 class ScheduleRequest(BaseModel):
@@ -124,8 +126,11 @@ async def visualize_schedules(
 
     schedule_generator = ScheduleGenerator(data.courses, data.filters.model_dump())
 
-    await schedule_generator.hydrate_courses_async()
-    schedule_generator.generate_schedules(data.top)
+    try:
+        await schedule_generator.hydrate_courses_async()
+        schedule_generator.generate_schedules(data.top)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
     # Capture the output of the visualize_schedules method
     buffer = io.StringIO()
@@ -174,8 +179,11 @@ async def generate_schedules(
 
     schedule_generator = ScheduleGenerator(data.courses, data.filters.model_dump())
 
-    await schedule_generator.hydrate_courses_async()
-    return schedule_generator.generate_schedules(data.top)
+    try:
+        await schedule_generator.hydrate_courses_async()
+        return schedule_generator.generate_schedules(data.top)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @app.get("/")
